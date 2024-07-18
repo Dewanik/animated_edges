@@ -25,9 +25,26 @@ def detect_person(frame, net):
     
     return detections
 
+def detect_face(frame, face_net):
+    h, w = frame.shape[:2]
+    blob = cv2.dnn.blobFromImage(cv2.resize(frame, (300, 300)), 1.0, (300, 300), (104.0, 177.0, 123.0))
+    face_net.setInput(blob)
+    detections = face_net.forward()
+    
+    for i in range(0, detections.shape[2]):
+        confidence = detections[0, 0, i, 2]
+        if confidence > 0.5:
+            box = detections[0, 0, i, 3:7] * np.array([w, h, w, h])
+            (startX, startY, endX, endY) = box.astype("int")
+            return (startX, startY, endX - startX, endY - startY)
+    return None
+
 def main():
     # Load the pre-trained model and set up the network
     net = cv2.dnn.readNetFromCaffe('deploy.prototxt', 'mobilenet_iter_73000.caffemodel')
+    
+    # Load face detection model
+    face_net = cv2.dnn.readNetFromCaffe('deploy_face.prototxt', 'res10_300x300_ssd_iter_140000.caffemodel')
     
     # Open the default webcam
     cap = cv2.VideoCapture(0)
@@ -41,9 +58,6 @@ def main():
         
         # Detect persons in the frame
         detections = detect_person(frame, net)
-        
-        # Create a white background
-        white_background = np.ones_like(frame) * 255
         
         (h, w) = frame.shape[:2]
         
@@ -69,13 +83,21 @@ def main():
                     
                     # Create a mask for the person
                     mask = np.zeros_like(frame)
-                    mask[startY:endY, startX:endX][edges != 0] = [0, 0, 0]
                     
-                    # Combine the mask with the white background
-                    white_background = np.where(mask==[0, 0, 0], mask, white_background)
+                    # Fill face, hands, and clothes with specific colors
+                    face_color = [255, 204, 153]  # Light skin color
+                    hand_color = [255, 204, 153]  # Light skin color
+                    clothes_color = [0, 0, 255]   # Red color for clothes
+                    
+                    # Detect face
+                    face_box = detect_face(person, face_net)
+                    if face_box is not None:
+                        (fx, fy, fw, fh) = face_box
+                        mask[startY+fy:startY+fy+fh, startX+fx:startX+fx+fw] = face_color
+                    
+                    
         
         # Display the original frame and the processed frame
-        print(white_background)
         cv2.imshow("Original", frame)
         cv2.imshow("Processed Frame", edges)
         
