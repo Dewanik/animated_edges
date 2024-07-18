@@ -75,8 +75,9 @@ def main():
                     white_background = np.where(mask==[0, 0, 0], mask, white_background)
         
         # Display the original frame and the processed frame
+        print(white_background)
         cv2.imshow("Original", frame)
-        cv2.imshow("Processed Frame", white_background)
+        cv2.imshow("Processed Frame", edges)
         
         # Exit the loop when 'q' key is pressed
         if cv2.waitKey(1) & 0xFF == ord('q'):
